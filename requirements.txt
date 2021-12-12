@@ -22,3 +22,4 @@ pytz==2020.1
 six==1.16.0
 tenacity==8.0.1
 Werkzeug==2.0.2
+jmspack==0.1.1
