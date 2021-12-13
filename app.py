@@ -9,8 +9,6 @@ import plotly.express as px
 # import dash_core_components as dcc
 # import dash_html_components as html
 
-import json
-from urllib.request import urlopen
 import numpy as np
 
 from jmspack.NLTSA import (distribution_uniformity, 
@@ -18,6 +16,8 @@ from jmspack.NLTSA import (distribution_uniformity,
                            complexity_resonance, 
                            cumulative_complexity_peaks)
 from jmspack.utils import apply_scaling
+from utils import request_mobility_data_url, summary_window_FUN
+from sklearn import decomposition
 
 
 # external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -27,12 +27,6 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 server = app.server
 
-def request_mobility_data_url():
-    url = "https://covid19-static.cdn-apple.com/covid19-mobility-data/current/v3/index.json"
-    response = urlopen(url)
-    data = json.loads(response.read())
-    url = ("https://covid19-static.cdn-apple.com" + data['basePath'] + data['regions']['en-us']['csvPath'])
-    return url
 
 df = pd.read_csv(request_mobility_data_url())
 
@@ -55,28 +49,48 @@ analysis_list = ["raw",
                  "distribution uniformity",
                  "complexity resonance",
                  "cumulative complexity peaks"]
+window_size_list = [{"label": "week", "value": 7},
+                    {"label": "fortnight", "value": 14},
+                    {"label": "month", "value": 28}
+                    ]
 
 app.layout = html.Div([
     html.H1(id='H1', children='Mobility Numbers', 
             style={'textAlign': 'center', 'marginTop': 40, 'marginBottom': 40}),
     html.Div([dcc.Dropdown(
-            id='country_choice',
-            options=[{'label': i.title().replace("_", " "), 'value': i} for i in country_list],
-            value="-Netherlands-driving"
-        )], style={'width': '20%', 'display': 'inline-block', "color": "#222", "padding":"5px"}),
-    dcc.Graph(id='line_plot'),
+        id='region_choice',
+        options=[{'label': i.title().replace("_", " "), 'value': i} for i in region_list],
+        value="Portugal"
+    )], style={'width': '20%', 'display': 'inline-block', "color": "#222", "padding": "5px"}),
+    dcc.Graph(id='multi_line_plot'),
+    html.P(id='P_note', children='''INFO: to hide lines click the marker in the legend''',
+                style={'textAlign': 'center', 'marginTop': 40, 'marginBottom': 10}),
     html.Div([dcc.Dropdown(
-            id='region_choice',
-            options=[{'label': i.title().replace("_", " "), 'value': i} for i in region_list],
-            value="Netherlands"
-        )], style={'width': '20%', 'display': 'inline-block', "color": "#222", "padding":"5px"}),
+        id='window_choice',
+        options=window_size_list,
+        value=7,
+    )], style={'width': '20%', 'display': 'inline-block', "color": "#222", "padding": "5px"}),  
+    dcc.Graph(id='multi_line_NLTSA_plot'),
+    html.Div([
+        html.H5(id='H5', children='''Due to the memory quota restriction imposed by Heroku, countries with more than 10 
+                                            rows will not run when requesting any of the following methods:''',
+                style={'textAlign': 'center', 'marginTop': 40, 'marginBottom': 10}),
+        html.H5(id='H5_2', children=f"{analysis_list[2:]}",
+                style={'textAlign': 'center', 'marginTop': 10, 'marginBottom': 40})
+        ]),
     html.Div([dcc.Dropdown(
             id='analysis_choice',
             options=[{'label': i.title().replace("_", " "), 'value': i} for i in analysis_list],
             value="raw"
         )], style={'width': '20%', 'display': 'inline-block', "color": "#222", "padding":"5px"}),
     # html.Div(id='display-value')
-    dcc.Graph(id="heatmap_plot", style={"height": "1000px"}),
+    dcc.Graph(id="heatmap_plot", style={"height": "800px"}),
+    # html.Div([dcc.Dropdown(
+    #         id='country_choice',
+    #         options=[{'label': i.title().replace("_", " "), 'value': i} for i in country_list],
+    #         value="-Portugal-driving"
+    #     )], style={'width': '20%', 'display': 'inline-block', "color": "#222", "padding":"5px"}),
+    # dcc.Graph(id='line_plot'),
     html.Div(html.A(children="Created by James Twose",
                     href="https://services.jms.rocks",
                     style={'color': "#743de0"}),
@@ -114,12 +128,89 @@ def graph_update(country_choice):
     return fig
 
 
-@app.callback(Output(component_id='heatmap_plot', component_property='figure'),
+@app.callback(Output(component_id='multi_line_plot', component_property='figure'),
               [Input(component_id='region_choice', component_property='value'),
-              Input(component_id='analysis_choice', component_property='value')
               ]
               )
-def heatmap_update(region_choice, analysis_choice):
+def graph_update_multi(region_choice):
+
+    plot_df = (prep_df
+                   .filter(regex=region_choice)
+                   .reset_index()
+                   .melt(id_vars="index")
+    )
+    fig = px.line(
+        data_frame=plot_df,
+        x='index',
+        y="value",
+        color="variable",
+        markers=True
+    )
+    # fig.update_traces(line_color='#743de0')
+
+    fig.update_layout(title='Mobility == {}'.format(region_choice),
+                      xaxis_title='Date',
+                      yaxis_title='{}'.format(region_choice),
+                      paper_bgcolor='rgb(34, 34, 34)',
+                          plot_bgcolor='rgb(34, 34, 34)',
+                          template="plotly_dark",
+                      )
+    return fig
+
+
+@app.callback(Output(component_id='multi_line_NLTSA_plot', component_property='figure'),
+              [Input(component_id='region_choice', component_property='value'),
+               Input(component_id='window_choice', component_property='value'),
+              ]
+              )
+def graph_update_multi_NLTSA(region_choice, window_choice):
+
+    decomps_list = [decomposition.DictionaryLearning,
+                    decomposition.FactorAnalysis,
+                    decomposition.FastICA,
+                    # decomposition.IncrementalPCA,
+                    decomposition.KernelPCA,
+                    decomposition.NMF,
+                    decomposition.PCA
+                    ]
+
+    tmp_df = (prep_df
+                   .filter(regex=region_choice)
+                   .replace(" ", np.nan)
+                   .dropna(thresh=10, axis=1).dropna(axis=0)
+                   .pipe(apply_scaling)
+                   # .reset_index()
+                   # .melt(id_vars="index")
+    )
+    plot_df=pd.concat([summary_window_FUN(tmp_df.pipe(apply_scaling), window_size=window_choice, user_func=window_function,
+                                          kwargs={"random_state": 42}) for window_function in decomps_list],
+                      axis=1).reset_index().melt(id_vars="index")
+    fig = px.line(
+        data_frame=plot_df,
+        x='index',
+        y="value",
+        color="variable",
+        markers=False
+    )
+    # fig.update_traces(line_color='#743de0')
+
+    fig.update_layout(title=f'Mobility == {region_choice}, Window Size == {window_choice}',
+                      xaxis_title='Day Number',
+                      yaxis_title='Scaled Value',
+                      paper_bgcolor='rgb(34, 34, 34)',
+                          plot_bgcolor='rgb(34, 34, 34)',
+                          template="plotly_dark",
+                      )
+    return fig
+
+
+@app.callback(Output(component_id='heatmap_plot', component_property='figure'),
+              [Input(component_id='region_choice', component_property='value'),
+              Input(component_id='analysis_choice', component_property='value'),
+              Input(component_id='window_choice', component_property='value')
+              ]
+              )
+def heatmap_update(region_choice, analysis_choice, window_choice):
     if analysis_choice == "raw":
         plot_df = prep_df.filter(regex=region_choice)
     elif analysis_choice == "fluctuation intensity":
@@ -129,7 +220,7 @@ def heatmap_update(region_choice, analysis_choice):
                 .dropna(thresh=10, axis=1).dropna(axis=0)
                 .pipe(apply_scaling))
         plot_df = fluctuation_intensity(df=tmp_df, 
-                      win=7, 
+                      win=window_choice, 
                       xmin=0, 
                       xmax=1, 
                       col_first=1, 
@@ -141,7 +232,7 @@ def heatmap_update(region_choice, analysis_choice):
                 .dropna(thresh=10, axis=1).dropna(axis=0)
                 .pipe(apply_scaling))
         plot_df = distribution_uniformity(df=tmp_df, 
-                      win=7, 
+                      win=window_choice, 
                       xmin=0, 
                       xmax=1, 
                       col_first=1, 
@@ -153,13 +244,13 @@ def heatmap_update(region_choice, analysis_choice):
                 .dropna(thresh=10, axis=1).dropna(axis=0)
                 .pipe(apply_scaling))
         fi_df = fluctuation_intensity(df=tmp_df, 
-                      win=7, 
+                      win=window_choice, 
                       xmin=0, 
                       xmax=1, 
                       col_first=1, 
                       col_last=tmp_df.shape[1])
         du_df = distribution_uniformity(df=tmp_df, 
-                      win=7, 
+                      win=window_choice, 
                       xmin=0, 
                       xmax=1, 
                       col_first=1, 
@@ -173,13 +264,13 @@ def heatmap_update(region_choice, analysis_choice):
             .dropna(thresh=10, axis=1).dropna(axis=0)
             .pipe(apply_scaling))
         fi_df = fluctuation_intensity(df=tmp_df, 
-                      win=7, 
+                      win=window_choice, 
                       xmin=0, 
                       xmax=1, 
                       col_first=1, 
                       col_last=tmp_df.shape[1])
         du_df = distribution_uniformity(df=tmp_df, 
-                      win=7, 
+                      win=window_choice, 
                       xmin=0, 
                       xmax=1, 
                       col_first=1, 
@@ -196,7 +287,7 @@ def heatmap_update(region_choice, analysis_choice):
     
     fig = px.imshow(plot_df.T, aspect="equal")
 
-    fig.update_layout(title=f'Mobility == {region_choice}, Analysis == {analysis_choice}',
+    fig.update_layout(title=f'Mobility == {region_choice}, Analysis == {analysis_choice}, Window Size == {window_choice}',
                       xaxis_title='Day Number',
                       yaxis_title='Country-Region-Transportation_type',
                       paper_bgcolor='rgb(34, 34, 34)',
