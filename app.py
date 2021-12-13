@@ -166,10 +166,10 @@ def graph_update_multi(region_choice):
 def graph_update_multi_NLTSA(region_choice, window_choice):
 
     decomps_list = [decomposition.DictionaryLearning,
-                    decomposition.FactorAnalysis,
-                    decomposition.FastICA,
+                    # decomposition.FactorAnalysis,
+                    # decomposition.FastICA,
                     # decomposition.IncrementalPCA,
-                    decomposition.KernelPCA,
+                    # decomposition.KernelPCA,
                     decomposition.NMF,
                     decomposition.PCA
                     ]
