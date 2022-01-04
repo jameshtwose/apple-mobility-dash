@@ -182,9 +182,17 @@ def graph_update_multi_NLTSA(region_choice, window_choice):
                    # .reset_index()
                    # .melt(id_vars="index")
     )
+    
+    if window_choice == 7:
+        date_end = 5
+    elif window_choice == 14:
+        date_end = 5
+    else:
+        date_end=19
+    
     plot_df=pd.concat([summary_window_FUN(tmp_df.pipe(apply_scaling), window_size=window_choice, user_func=window_function,
                                           kwargs={"random_state": 42}) for window_function in decomps_list],
-                      axis=1).reset_index().melt(id_vars="index")
+                      axis=1).set_index(tmp_df.index[:-date_end]).reset_index().melt(id_vars="index")
     fig = px.line(
         data_frame=plot_df,
         x='index',
