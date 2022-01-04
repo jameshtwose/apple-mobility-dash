@@ -46,9 +46,10 @@ region_list = df["region"].unique().tolist()
 analysis_list = ["raw", 
                  "minmax scaled", 
                  "fluctuation intensity", 
-                 "distribution uniformity",
-                 "complexity resonance",
-                 "cumulative complexity peaks"]
+                #  "distribution uniformity",
+                #  "complexity resonance",
+                #  "cumulative complexity peaks"
+                 ]
 window_size_list = [{"label": "week", "value": 7},
                     {"label": "fortnight", "value": 14},
                     {"label": "month", "value": 28}
@@ -73,10 +74,10 @@ app.layout = html.Div([
     dcc.Graph(id='multi_line_NLTSA_plot'),
     html.Div([
         html.H5(id='H5', children='''Due to the memory quota restriction imposed by Heroku, countries with more than 10 
-                                            rows will not run when requesting any of the following methods:''',
+                                            rows may not run when requesting "fluctuation intensity" ''',
                 style={'textAlign': 'center', 'marginTop': 40, 'marginBottom': 10}),
-        html.H5(id='H5_2', children=f"{analysis_list[2:]}",
-                style={'textAlign': 'center', 'marginTop': 10, 'marginBottom': 40})
+        # html.H5(id='H5_2', children=f"{analysis_list[2:]}",
+        #         style={'textAlign': 'center', 'marginTop': 10, 'marginBottom': 40})
         ]),
     html.Div([dcc.Dropdown(
             id='analysis_choice',
@@ -167,7 +168,7 @@ def graph_update_multi_NLTSA(region_choice, window_choice):
 
     decomps_list = [decomposition.DictionaryLearning,
                     # decomposition.FactorAnalysis,
-                    # decomposition.FastICA,
+                    decomposition.FastICA,
                     # decomposition.IncrementalPCA,
                     # decomposition.KernelPCA,
                     decomposition.NMF,
@@ -203,7 +204,7 @@ def graph_update_multi_NLTSA(region_choice, window_choice):
     # fig.update_traces(line_color='#743de0')
 
     fig.update_layout(title=f'Mobility == {region_choice}, Window Size == {window_choice}',
-                      xaxis_title='Day Number',
+                      xaxis_title='Date',
                       yaxis_title='Scaled Value',
                       paper_bgcolor='rgb(34, 34, 34)',
                           plot_bgcolor='rgb(34, 34, 34)',
@@ -219,6 +220,8 @@ def graph_update_multi_NLTSA(region_choice, window_choice):
               ]
               )
 def heatmap_update(region_choice, analysis_choice, window_choice):
+    # if prep_df.filter(regex=region_choice).shape[1] < 11:
+        
     if analysis_choice == "raw":
         plot_df = prep_df.filter(regex=region_choice)
     elif analysis_choice == "fluctuation intensity":
@@ -228,11 +231,11 @@ def heatmap_update(region_choice, analysis_choice, window_choice):
                 .dropna(thresh=10, axis=1).dropna(axis=0)
                 .pipe(apply_scaling))
         plot_df = fluctuation_intensity(df=tmp_df, 
-                      win=window_choice, 
-                      xmin=0, 
-                      xmax=1, 
-                      col_first=1, 
-                      col_last=tmp_df.shape[1])
+                    win=window_choice, 
+                    xmin=0, 
+                    xmax=1, 
+                    col_first=1, 
+                    col_last=tmp_df.shape[1])
     elif analysis_choice == "distribution uniformity":
         tmp_df=(prep_df
                 .filter(regex=region_choice)
@@ -240,11 +243,11 @@ def heatmap_update(region_choice, analysis_choice, window_choice):
                 .dropna(thresh=10, axis=1).dropna(axis=0)
                 .pipe(apply_scaling))
         plot_df = distribution_uniformity(df=tmp_df, 
-                      win=window_choice, 
-                      xmin=0, 
-                      xmax=1, 
-                      col_first=1, 
-                      col_last=tmp_df.shape[1])
+                    win=window_choice, 
+                    xmin=0, 
+                    xmax=1, 
+                    col_first=1, 
+                    col_last=tmp_df.shape[1])
     elif analysis_choice == "complexity resonance":
         tmp_df=(prep_df
                 .filter(regex=region_choice)
@@ -252,19 +255,19 @@ def heatmap_update(region_choice, analysis_choice, window_choice):
                 .dropna(thresh=10, axis=1).dropna(axis=0)
                 .pipe(apply_scaling))
         fi_df = fluctuation_intensity(df=tmp_df, 
-                      win=window_choice, 
-                      xmin=0, 
-                      xmax=1, 
-                      col_first=1, 
-                      col_last=tmp_df.shape[1])
+                    win=window_choice, 
+                    xmin=0, 
+                    xmax=1, 
+                    col_first=1, 
+                    col_last=tmp_df.shape[1])
         du_df = distribution_uniformity(df=tmp_df, 
-                      win=window_choice, 
-                      xmin=0, 
-                      xmax=1, 
-                      col_first=1, 
-                      col_last=tmp_df.shape[1])
+                    win=window_choice, 
+                    xmin=0, 
+                    xmax=1, 
+                    col_first=1, 
+                    col_last=tmp_df.shape[1])
         plot_df = complexity_resonance(distribution_uniformity_df=du_df,
-                                       fluctuation_intensity_df=fi_df)
+                                    fluctuation_intensity_df=fi_df)
     elif analysis_choice == "cumulative complexity peaks":
         tmp_df=(prep_df
             .filter(regex=region_choice)
@@ -272,19 +275,19 @@ def heatmap_update(region_choice, analysis_choice, window_choice):
             .dropna(thresh=10, axis=1).dropna(axis=0)
             .pipe(apply_scaling))
         fi_df = fluctuation_intensity(df=tmp_df, 
-                      win=window_choice, 
-                      xmin=0, 
-                      xmax=1, 
-                      col_first=1, 
-                      col_last=tmp_df.shape[1])
+                    win=window_choice, 
+                    xmin=0, 
+                    xmax=1, 
+                    col_first=1, 
+                    col_last=tmp_df.shape[1])
         du_df = distribution_uniformity(df=tmp_df, 
-                      win=window_choice, 
-                      xmin=0, 
-                      xmax=1, 
-                      col_first=1, 
-                      col_last=tmp_df.shape[1])
+                    win=window_choice, 
+                    xmin=0, 
+                    xmax=1, 
+                    col_first=1, 
+                    col_last=tmp_df.shape[1])
         cr_df = complexity_resonance(distribution_uniformity_df=du_df,
-                                       fluctuation_intensity_df=fi_df)
+                                    fluctuation_intensity_df=fi_df)
         plot_df, _ = cumulative_complexity_peaks(df=cr_df)
     else:
         tmp_df=(prep_df
@@ -292,11 +295,20 @@ def heatmap_update(region_choice, analysis_choice, window_choice):
                 .replace(" ", np.nan)
                 .pipe(apply_scaling))
         plot_df=tmp_df
+        
+    # else:
+    #     analysis_choice="raw"
+    #     plot_df = prep_df.filter(regex=region_choice)
     
     fig = px.imshow(plot_df.T, aspect="equal")
 
-    fig.update_layout(title=f'Mobility == {region_choice}, Analysis == {analysis_choice}, Window Size == {window_choice}',
-                      xaxis_title='Day Number',
+    
+    if analysis_choice == "raw" or analysis_choice == "minmax scaled":
+        fig_title=f'Mobility == {region_choice}, Analysis == {analysis_choice}'
+    else:
+        fig_title=f'Mobility == {region_choice}, Analysis == {analysis_choice}, Window Size == {window_choice}'
+    fig.update_layout(title=fig_title,
+                      xaxis_title='Date',
                       yaxis_title='Country-Region-Transportation_type',
                       paper_bgcolor='rgb(34, 34, 34)',
                       plot_bgcolor='rgb(34, 34, 34)',

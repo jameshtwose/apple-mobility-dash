@@ -74,5 +74,9 @@ tmp_df = (prep_df
 plot_df=pd.concat([summary_window_FUN(tmp_df.pipe(apply_scaling), window_size=5, user_func=window_function,
 
                                 kwargs={"random_state": 42}) for window_function in decomps_list],
-            axis=1).reset_index().melt(id_vars="index")
+            axis=1).set_index(tmp_df.index[:-4]).reset_index().melt(id_vars="index")
+# %%
+# plot_df
+plot_df
+
 # %%
