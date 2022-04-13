@@ -71,14 +71,14 @@ app.layout = html.Div([
         options=window_size_list,
         value=7,
     )], style={'width': '20%', 'display': 'inline-block', "color": "#222", "padding": "5px"}),  
-    dcc.Graph(id='multi_line_NLTSA_plot'),
-    html.Div([
-        html.H5(id='H5', children='''Due to the memory quota restriction imposed by Heroku, countries with more than 10 
-                                            rows may not run when requesting "fluctuation intensity" ''',
-                style={'textAlign': 'center', 'marginTop': 40, 'marginBottom': 10}),
-        # html.H5(id='H5_2', children=f"{analysis_list[2:]}",
-        #         style={'textAlign': 'center', 'marginTop': 10, 'marginBottom': 40})
-        ]),
+    # dcc.Graph(id='multi_line_NLTSA_plot'),
+    # html.Div([
+    #     html.H5(id='H5', children='''Due to the memory quota restriction imposed by Heroku, countries with more than 10 
+    #                                         rows may not run when requesting "fluctuation intensity" ''',
+    #             style={'textAlign': 'center', 'marginTop': 40, 'marginBottom': 10}),
+    #     # html.H5(id='H5_2', children=f"{analysis_list[2:]}",
+    #     #         style={'textAlign': 'center', 'marginTop': 10, 'marginBottom': 40})
+    #     ]),
     html.Div([dcc.Dropdown(
             id='analysis_choice',
             options=[{'label': i.title().replace("_", " "), 'value': i} for i in analysis_list],
@@ -159,58 +159,58 @@ def graph_update_multi(region_choice):
     return fig
 
 
-@app.callback(Output(component_id='multi_line_NLTSA_plot', component_property='figure'),
-              [Input(component_id='region_choice', component_property='value'),
-               Input(component_id='window_choice', component_property='value'),
-              ]
-              )
-def graph_update_multi_NLTSA(region_choice, window_choice):
+# @app.callback(Output(component_id='multi_line_NLTSA_plot', component_property='figure'),
+#               [Input(component_id='region_choice', component_property='value'),
+#                Input(component_id='window_choice', component_property='value'),
+#               ]
+#               )
+# def graph_update_multi_NLTSA(region_choice, window_choice):
 
-    decomps_list = [decomposition.DictionaryLearning,
-                    # decomposition.FactorAnalysis,
-                    # decomposition.FastICA,
-                    # decomposition.IncrementalPCA,
-                    # decomposition.KernelPCA,
-                    decomposition.NMF,
-                    decomposition.PCA
-                    ]
+#     decomps_list = [decomposition.DictionaryLearning,
+#                     # decomposition.FactorAnalysis,
+#                     # decomposition.FastICA,
+#                     # decomposition.IncrementalPCA,
+#                     # decomposition.KernelPCA,
+#                     decomposition.NMF,
+#                     decomposition.PCA
+#                     ]
 
-    tmp_df = (prep_df
-                   .filter(regex=region_choice)
-                   .replace(" ", np.nan)
-                   .dropna(thresh=10, axis=1).dropna(axis=0)
-                   .pipe(apply_scaling)
-                   # .reset_index()
-                   # .melt(id_vars="index")
-    )
+#     tmp_df = (prep_df
+#                    .filter(regex=region_choice)
+#                    .replace(" ", np.nan)
+#                    .dropna(thresh=10, axis=1).dropna(axis=0)
+#                    .pipe(apply_scaling)
+#                    # .reset_index()
+#                    # .melt(id_vars="index")
+#     )
     
-    if window_choice == 7:
-        date_end = 5
-    elif window_choice == 14:
-        date_end = 5
-    else:
-        date_end=19
+#     if window_choice == 7:
+#         date_end = 5
+#     elif window_choice == 14:
+#         date_end = 5
+#     else:
+#         date_end=19
     
-    plot_df=pd.concat([summary_window_FUN(tmp_df.pipe(apply_scaling), window_size=window_choice, user_func=window_function,
-                                          kwargs={"random_state": 42}) for window_function in decomps_list],
-                      axis=1).set_index(tmp_df.index[:-date_end]).reset_index().melt(id_vars="index")
-    fig = px.line(
-        data_frame=plot_df,
-        x='index',
-        y="value",
-        color="variable",
-        markers=False
-    )
-    # fig.update_traces(line_color='#743de0')
+#     plot_df=pd.concat([summary_window_FUN(tmp_df.pipe(apply_scaling), window_size=window_choice, user_func=window_function,
+#                                           kwargs={"random_state": 42}) for window_function in decomps_list],
+#                       axis=1).set_index(tmp_df.index[:-date_end]).reset_index().melt(id_vars="index")
+#     fig = px.line(
+#         data_frame=plot_df,
+#         x='index',
+#         y="value",
+#         color="variable",
+#         markers=False
+#     )
+#     # fig.update_traces(line_color='#743de0')
 
-    fig.update_layout(title=f'Mobility == {region_choice}, Window Size == {window_choice}',
-                      xaxis_title='Date',
-                      yaxis_title='Scaled Value',
-                      paper_bgcolor='rgb(34, 34, 34)',
-                          plot_bgcolor='rgb(34, 34, 34)',
-                          template="plotly_dark",
-                      )
-    return fig
+#     fig.update_layout(title=f'Mobility == {region_choice}, Window Size == {window_choice}',
+#                       xaxis_title='Date',
+#                       yaxis_title='Scaled Value',
+#                       paper_bgcolor='rgb(34, 34, 34)',
+#                           plot_bgcolor='rgb(34, 34, 34)',
+#                           template="plotly_dark",
+#                       )
+#     return fig
 
 
 @app.callback(Output(component_id='heatmap_plot', component_property='figure'),
